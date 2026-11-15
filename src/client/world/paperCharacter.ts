@@ -90,6 +90,24 @@ export function createPaperCharacter(
     return m;
   };
 
+  // Inked contour pass: crisp edges make the folded-paper silhouettes read
+  // clearly against busy terrain instead of disappearing into soft lighting.
+  const addInkOutline = (mesh: THREE.Mesh, opacity = 0.62) => {
+    const edgeGeo = trackGeo(new THREE.EdgesGeometry(mesh.geometry, 24));
+    const edgeMat = trackMat(new THREE.LineBasicMaterial({
+      color: 0x17120f,
+      transparent: true,
+      opacity,
+      depthWrite: false,
+    }));
+    const outline = new THREE.LineSegments(edgeGeo, edgeMat);
+    outline.position.copy(mesh.position);
+    outline.quaternion.copy(mesh.quaternion);
+    outline.scale.copy(mesh.scale);
+    outline.renderOrder = 2;
+    mesh.parent?.add(outline);
+  };
+
   // Grounding contact shadow disc
   const shadowGeo = trackGeo(new THREE.CircleGeometry(0.52, 20));
   const shadowMat = trackMat(
@@ -155,6 +173,7 @@ export function createPaperCharacter(
   torsoMesh.castShadow = true;
   torsoMesh.receiveShadow = true;
   bodyPivot.add(torsoMesh);
+  addInkOutline(torsoMesh, 0.72);
 
   // 2. Layered Origami Skirt / Tunic Hem
   const hemGeo = trackGeo(new THREE.CylinderGeometry(0.22, 0.34, 0.34, 6));
@@ -162,6 +181,7 @@ export function createPaperCharacter(
   hemMesh.position.y = 0.64;
   hemMesh.castShadow = true;
   bodyPivot.add(hemMesh);
+  addInkOutline(hemMesh, 0.58);
 
   // 3. Folded Paper Collar + Hearth Crest
   const collarGeo = trackGeo(new THREE.CylinderGeometry(0.29, 0.25, 0.14, 6));
@@ -169,6 +189,7 @@ export function createPaperCharacter(
   collarMesh.position.y = 1.27;
   collarMesh.castShadow = true;
   bodyPivot.add(collarMesh);
+  addInkOutline(collarMesh, 0.68);
 
   const hearth = HEARTHS.find((h) => h.id === hearthId) || HEARTHS[5];
   const crestMat = trackMat(
@@ -201,6 +222,7 @@ export function createPaperCharacter(
   cloakMesh.rotation.x = 0.14;
   cloakMesh.castShadow = true;
   bodyPivot.add(cloakMesh);
+  addInkOutline(cloakMesh, 0.5);
 
   // 5. Head & Paper Mask/Face + Hat
   const headGroup = new THREE.Group();
@@ -211,6 +233,7 @@ export function createPaperCharacter(
   const headMesh = new THREE.Mesh(headGeo, paperMat);
   headMesh.castShadow = true;
   headGroup.add(headMesh);
+  addInkOutline(headMesh, 0.72);
 
   // Charcoal ink eyes
   const eyeGeo = trackGeo(new THREE.BoxGeometry(0.045, 0.035, 0.02));

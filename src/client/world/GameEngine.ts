@@ -181,7 +181,7 @@ export class AshenGameEngine {
     });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.08;
+    this.renderer.toneMappingExposure = 1.16;
     this.renderer.shadowMap.enabled = !this.isSoftwareGl;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.applyResolution();
@@ -193,11 +193,12 @@ export class AshenGameEngine {
     this.container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#27231e');
-    this.scene.fog = new THREE.FogExp2('#27231e', 0.011);
+    this.scene.background = new THREE.Color('#17191c');
+    this.scene.fog = new THREE.FogExp2('#17191c', 0.0088);
 
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.42;
     pmrem.dispose();
 
     const w = container.clientWidth || window.innerWidth;
@@ -206,10 +207,10 @@ export class AshenGameEngine {
     this.camera.position.set(0, 18, 42);
 
     // 3-point warm/cool studio outdoor rig
-    this.hemiLight = new THREE.HemisphereLight(0xa7bed3, 0x3b3024, 0.72);
+    this.hemiLight = new THREE.HemisphereLight(0x879bb4, 0x201914, 0.42);
     this.scene.add(this.hemiLight);
 
-    this.keyLight = new THREE.DirectionalLight(0xffdfb8, 1.55);
+    this.keyLight = new THREE.DirectionalLight(0xffc47f, 2.05);
     this.keyLight.position.set(48, 72, 36);
     this.keyLight.castShadow = !this.isSoftwareGl;
     this.keyLight.shadow.mapSize.set(1024, 1024);
@@ -224,7 +225,7 @@ export class AshenGameEngine {
     this.scene.add(this.keyLight);
     this.scene.add(this.keyLight.target);
 
-    this.rimLight = new THREE.DirectionalLight(0x88a9c4, 0.48);
+    this.rimLight = new THREE.DirectionalLight(0x8caed0, 0.82);
     this.rimLight.position.set(-45, 35, -45);
     this.scene.add(this.rimLight);
 
