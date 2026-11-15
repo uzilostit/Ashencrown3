@@ -292,6 +292,7 @@ export const GameplayHUD: React.FC<GameplayHUDProps> = ({
               </div>
             ) : (
               <div className="text-xs text-[#cfc6b6] tabular-nums">
+                {roomState.isDummyMatch && <span className="text-[#d96b38] font-semibold mr-1.5">DUMMY</span>}
                 {alivePlayers.length} Alive · Next Shift {Math.ceil(roomState.collapse.nextEventInSeconds)}s
               </div>
             )}

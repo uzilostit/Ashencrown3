@@ -117,3 +117,34 @@ test('multiplayer room flow: 6-char code, 1-player block, 2-player start, host m
   wss.close();
   server.close();
 });
+
+test('solo dummy match starts immediately with Ash Dummy without affecting normal multiplayer rules', async () => {
+  const server = http.createServer();
+  const wss = new WebSocketServer({ server, path: '/ws' });
+  const gameServer = new AshenCrownGameServer(wss);
+
+  await new Promise<void>((res) => server.listen(0, '127.0.0.1', () => res()));
+  const addr = server.address();
+  assert.ok(addr && typeof addr === 'object');
+  const port = addr.port;
+
+  const client = await connectClient(port);
+  await client.nextMsg((m) => m.type === 'welcome');
+
+  client.ws.send(JSON.stringify({ type: 'start_dummy_match', payload: { name: 'SoloTester' } }));
+  const joined = await client.nextMsg((m) => m.type === 'room_joined');
+  const payload = joined.payload as { snapshot: RoomStateSnapshot };
+  assert.equal(payload.snapshot.isDummyMatch, true);
+  assert.equal(payload.snapshot.lobbyPlayers.length, 2);
+  assert.equal(payload.snapshot.lobbyPlayers.some((p) => p.isDummy && p.name === 'Ash Dummy'), true);
+
+  const countdown = await client.nextMsg(
+    (m) => m.type === 'room_state' && (m.payload as RoomStateSnapshot).phase === 'countdown'
+  );
+  assert.equal((countdown.payload as RoomStateSnapshot).phase, 'countdown');
+
+  client.ws.close();
+  gameServer.dispose();
+  wss.close();
+  server.close();
+});

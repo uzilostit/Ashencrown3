@@ -351,6 +351,7 @@ export interface LobbyPlayer {
   isHost: boolean;
   connected: boolean;
   ceremonyDaggerDrawn: boolean;
+  isDummy?: boolean;
 }
 
 export interface WorldPlayerState {
@@ -358,6 +359,7 @@ export interface WorldPlayerState {
   name: string;
   hearthId: string;
   appearance: PaperAppearance;
+  isDummy?: boolean;
   x: number;
   y: number;
   z: number;
@@ -457,6 +459,7 @@ export interface MatchResultSummary {
 
 export interface RoomStateSnapshot {
   roomCode: string;
+  isDummyMatch?: boolean;
   phase: MatchPhase;
   seed: number;
   hostId: string;
@@ -491,6 +494,7 @@ export interface ServerToClientMessage {
 export interface ClientToServerMessage {
   type:
     | 'create_room'
+    | 'start_dummy_match'
     | 'join_room'
     | 'reconnect_room'
     | 'leave_room'

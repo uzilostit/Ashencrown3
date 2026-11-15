@@ -1,11 +1,12 @@
 import React from 'react';
-import { Volume2, VolumeX, Settings, Info, Plus, LogIn } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Info, Plus, LogIn, Swords } from 'lucide-react';
 import { soundEngine } from '../audio/soundEngine.ts';
 
 interface TitleScreenProps {
   onPlay: () => void;
   onCreateRoom: () => void;
   onJoinRoom: () => void;
+  onStartDummyMatch: () => void;
   onOpenSettings: () => void;
   onOpenAbout: () => void;
   muted: boolean;
@@ -16,6 +17,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
   onPlay,
   onCreateRoom,
   onJoinRoom,
+  onStartDummyMatch,
   onOpenSettings,
   onOpenAbout,
   muted,
@@ -160,6 +162,18 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
           >
             <LogIn className="w-4 h-4 text-[#d4a853]" />
             Join Room
+          </button>
+          <button
+            type="button"
+            data-testid="dummy-match-btn"
+            onClick={() => {
+              soundEngine.playUiClick();
+              onStartDummyMatch();
+            }}
+            className="px-5 py-3 rounded border border-[#d96b38]/55 bg-[#261c17] text-[#f2ede4] font-medium text-sm hover:border-[#d96b38] transition-colors flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            <Swords className="w-4 h-4 text-[#d96b38]" />
+            Dummy Match
           </button>
         </div>
       </div>

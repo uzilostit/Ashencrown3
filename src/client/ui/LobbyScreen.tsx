@@ -23,6 +23,7 @@ interface LobbyScreenProps {
   onClearError: () => void;
   onBackToTitle: () => void;
   onCreateRoom: () => void;
+  onStartDummyMatch: () => void;
   onJoinRoom: (code: string) => void;
   onLeaveRoom: () => void;
   onToggleReady: () => void;
@@ -51,6 +52,7 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
   onClearError,
   onBackToTitle,
   onCreateRoom,
+  onStartDummyMatch,
   onJoinRoom,
   onLeaveRoom,
   onToggleReady,
@@ -76,10 +78,11 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
     }
   };
 
-  // 15-second ceremonial pedestal countdown overlay
+  // Ceremonial pedestal countdown overlay (15s multiplayer / 3s dummy practice)
   if (mode === 'countdown' && roomState) {
+    const totalSecs = roomState.isDummyMatch ? 3 : 15;
     const secs = Math.ceil(roomState.countdownSecondsRemaining);
-    const pct = Math.max(0, Math.min(100, (roomState.countdownSecondsRemaining / 15) * 100));
+    const pct = Math.max(0, Math.min(100, (roomState.countdownSecondsRemaining / totalSecs) * 100));
     const dashOffset = 283 - (283 * pct) / 100;
     const drewDagger = Boolean(me?.ceremonyDaggerDrawn);
 
@@ -87,7 +90,9 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
       <div className="fixed inset-0 z-30 flex flex-col justify-between p-6 pointer-events-none">
         <div className="flex items-center justify-between pointer-events-auto">
           <div className="bg-[#141311]/90 border border-[#d4a853]/35 px-4 py-2 rounded">
-            <span className="text-xs uppercase tracking-widest text-[#c7bca8]">Ceremonial Pedestal · Room </span>
+            <span className="text-xs uppercase tracking-widest text-[#c7bca8]">
+              {roomState.isDummyMatch ? 'Dummy Practice · Room ' : 'Ceremonial Pedestal · Room '}
+            </span>
             <span className="font-mono-tabular font-semibold text-[#d4a853]">{roomState.roomCode}</span>
           </div>
           <div className="bg-[#141311]/90 border border-[#d4a853]/35 px-4 py-2 rounded text-sm">
@@ -323,62 +328,84 @@ export const LobbyScreen: React.FC<LobbyScreenProps> = ({
           {/* Right Column: Create/Join Hub OR Room Roster & Match Controls */}
           <div className="lg:col-span-7 space-y-4">
             {mode === 'hub' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
-                <div
-                  className={`bg-[#211e1a] border rounded-lg p-5 flex flex-col justify-between ${
-                    initialAction === 'create' ? 'border-[#d4a853]' : 'border-[#a39a8b]/25'
-                  }`}
-                >
-                  <div>
-                    <h2 className="font-display text-lg text-[#f2ede4] mb-1">Host a Match</h2>
-                    <p className="text-xs text-[#a39a8b] leading-relaxed mb-4">
-                      Generate a unique six-character room code and invite 1 to 14 friends. Matches begin as soon as two players are present.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      soundEngine.playUiClick();
-                      onCreateRoom();
-                    }}
-                    className="w-full py-3 rounded bg-[#d4a853] hover:bg-[#e1b967] text-[#141311] font-semibold text-sm transition-colors cursor-pointer"
+              <div className="flex flex-col gap-4 h-full">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+                  <div
+                    className={`bg-[#211e1a] border rounded-lg p-5 flex flex-col justify-between ${
+                      initialAction === 'create' ? 'border-[#d4a853]' : 'border-[#a39a8b]/25'
+                    }`}
                   >
-                    Create Room
-                  </button>
+                    <div>
+                      <h2 className="font-display text-lg text-[#f2ede4] mb-1">Host a Match</h2>
+                      <p className="text-xs text-[#a39a8b] leading-relaxed mb-4">
+                        Generate a unique six-character room code and invite 1 to 14 friends. Matches begin as soon as two players are present.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundEngine.playUiClick();
+                        onCreateRoom();
+                      }}
+                      className="w-full py-3 rounded bg-[#d4a853] hover:bg-[#e1b967] text-[#141311] font-semibold text-sm transition-colors cursor-pointer"
+                    >
+                      Create Room
+                    </button>
+                  </div>
+
+                  <div
+                    className={`bg-[#211e1a] border rounded-lg p-5 flex flex-col justify-between ${
+                      initialAction === 'join' ? 'border-[#d4a853]' : 'border-[#a39a8b]/25'
+                    }`}
+                  >
+                    <div>
+                      <h2 className="font-display text-lg text-[#f2ede4] mb-1">Join by Code</h2>
+                      <p className="text-xs text-[#a39a8b] leading-relaxed mb-3">
+                        Enter a host&apos;s six-character room code to enter their staging hall.
+                      </p>
+                      <label htmlFor="room-code-input" className="block text-xs text-[#cfc6b6] mb-1">
+                        6-Character Room Code
+                      </label>
+                      <input
+                        id="room-code-input"
+                        type="text"
+                        maxLength={6}
+                        value={joinCode}
+                        onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                        placeholder="E.G. K7M9Q2"
+                        className="w-full px-3 py-2.5 rounded bg-[#141311] border border-[#a39a8b]/35 font-mono-tabular text-base tracking-[0.25em] uppercase text-[#d4a853] focus:outline-none focus:border-[#d4a853] mb-3"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundEngine.playUiClick();
+                        onJoinRoom(joinCode);
+                      }}
+                      className="w-full py-3 rounded border border-[#d4a853]/60 bg-[#2a251e] hover:bg-[#352e25] text-[#f2ede4] font-semibold text-sm transition-colors cursor-pointer"
+                    >
+                      Join Room
+                    </button>
+                  </div>
                 </div>
 
-                <div
-                  className={`bg-[#211e1a] border rounded-lg p-5 flex flex-col justify-between ${
-                    initialAction === 'join' ? 'border-[#d4a853]' : 'border-[#a39a8b]/25'
-                  }`}
-                >
+                <div className="bg-[#211e1a] border border-[#d96b38]/40 rounded-lg p-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <h2 className="font-display text-lg text-[#f2ede4] mb-1">Join by Code</h2>
-                    <p className="text-xs text-[#a39a8b] leading-relaxed mb-3">
-                      Enter a host&apos;s six-character room code to enter their staging hall.
+                    <h2 className="font-display text-base text-[#f2ede4]">Solo Dummy Match</h2>
+                    <p className="text-xs text-[#a39a8b]">
+                      Jump directly into the 3D arena with an Ash Dummy target to test combat, looting, and extraction.
                     </p>
-                    <label htmlFor="room-code-input" className="block text-xs text-[#cfc6b6] mb-1">
-                      6-Character Room Code
-                    </label>
-                    <input
-                      id="room-code-input"
-                      type="text"
-                      maxLength={6}
-                      value={joinCode}
-                      onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-                      placeholder="E.G. K7M9Q2"
-                      className="w-full px-3 py-2.5 rounded bg-[#141311] border border-[#a39a8b]/35 font-mono-tabular text-base tracking-[0.25em] uppercase text-[#d4a853] focus:outline-none focus:border-[#d4a853] mb-3"
-                    />
                   </div>
                   <button
                     type="button"
                     onClick={() => {
                       soundEngine.playUiClick();
-                      onJoinRoom(joinCode);
+                      onStartDummyMatch();
                     }}
-                    className="w-full py-3 rounded border border-[#d4a853]/60 bg-[#2a251e] hover:bg-[#352e25] text-[#f2ede4] font-semibold text-sm transition-colors cursor-pointer"
+                    className="px-5 py-2.5 rounded bg-[#d96b38] hover:bg-[#e57a47] text-[#141311] font-semibold text-sm transition-colors flex items-center gap-2 shrink-0 cursor-pointer"
                   >
-                    Join Room
+                    <Swords className="w-4 h-4" />
+                    Start Dummy Match
                   </button>
                 </div>
               </div>

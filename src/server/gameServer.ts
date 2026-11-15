@@ -59,6 +59,7 @@ interface ServerPlayer {
   connected: boolean;
   disconnectedAt: number | null;
   ceremonyDaggerDrawn: boolean;
+  isDummy?: boolean;
   input: PlayerInputState;
   vy: number;
   grounded: boolean;
@@ -72,6 +73,7 @@ interface ServerPlayer {
 
 interface RoomInstance {
   code: string;
+  isDummyMatch: boolean;
   phase: MatchPhase;
   seed: number;
   hostId: string;
@@ -276,6 +278,7 @@ export class AshenCrownGameServer {
 
     const room: RoomInstance = {
       code,
+      isDummyMatch: false,
       phase: 'lobby',
       seed,
       hostId: playerId,
@@ -323,6 +326,155 @@ export class AshenCrownGameServer {
         snapshot: this.buildSnapshot(room),
       },
     });
+  }
+
+  private createDummyMatch(
+    ws: WebSocket,
+    payload: { name?: string; hearthId?: string; appearance?: PaperAppearance }
+  ) {
+    this.detachSocket(ws);
+    const code = this.generateRoomCode();
+    const seed = Math.floor(Math.random() * 899999) + 100000;
+    const layout = generateArenaLayout(seed);
+    const playerId = crypto.randomUUID();
+    const dummyId = crypto.randomUUID();
+    const reconnectToken = crypto.randomUUID();
+    const cleanName = this.sanitizeName(payload.name);
+    const hearthId = payload.hearthId || 'ash';
+    const appearance = payload.appearance || { ...DEFAULT_APPEARANCE };
+    const dummyAppearance: PaperAppearance = {
+      paperTone: '#d9cbb8',
+      cloakColor: '#7a352a',
+      trimColor: '#d96b38',
+      hatStyle: 'cap',
+      foldDetail: 'weathered',
+    };
+
+    const settings: MatchSettings = {
+      healthRegenEnabled: true,
+      friendlyFireAllies: false,
+      collapseSpeedMultiplier: 1,
+      startingRations: 1,
+    };
+
+    const human: ServerPlayer = {
+      id: playerId,
+      reconnectToken,
+      ws,
+      name: cleanName,
+      hearthId,
+      appearance,
+      ready: true,
+      connected: true,
+      disconnectedAt: null,
+      ceremonyDaggerDrawn: false,
+      input: { moveX: 0, moveZ: 0, yaw: 0, pitch: 0, sprint: false, crouch: false, jump: false, blocking: false },
+      vy: 0,
+      grounded: true,
+      attackCooldown: 0,
+      collectTimer: 0,
+      interactTimer: 0,
+      damageFlashTimer: 0,
+      world: this.createDefaultWorldPlayer(
+        playerId,
+        cleanName,
+        hearthId,
+        appearance,
+        layout.spawnPoints[0],
+        seed,
+        settings.startingRations
+      ),
+      msgTimestamps: [],
+    };
+
+    const dummyWorld = this.createDefaultWorldPlayer(
+      dummyId,
+      'Ash Dummy',
+      'iron',
+      dummyAppearance,
+      layout.spawnPoints[1 % layout.spawnPoints.length],
+      seed,
+      1
+    );
+    dummyWorld.isDummy = true;
+
+    const dummy: ServerPlayer = {
+      id: dummyId,
+      reconnectToken: crypto.randomUUID(),
+      ws: null,
+      name: 'Ash Dummy',
+      hearthId: 'iron',
+      appearance: dummyAppearance,
+      ready: true,
+      connected: true,
+      disconnectedAt: null,
+      ceremonyDaggerDrawn: true,
+      isDummy: true,
+      input: { moveX: 0, moveZ: 0, yaw: 0, pitch: 0, sprint: false, crouch: false, jump: false, blocking: false },
+      vy: 0,
+      grounded: true,
+      attackCooldown: 0,
+      collectTimer: 0,
+      interactTimer: 0,
+      damageFlashTimer: 0,
+      world: dummyWorld,
+      msgTimestamps: [],
+    };
+
+    const room: RoomInstance = {
+      code,
+      isDummyMatch: true,
+      phase: 'lobby',
+      seed,
+      hostId: playerId,
+      settings,
+      layout,
+      players: new Map([
+        [playerId, human],
+        [dummyId, dummy],
+      ]),
+      lootNodes: structuredClone(layout.lootNodes),
+      countdownSecondsRemaining: 3,
+      matchElapsedSeconds: 0,
+      collapse: {
+        phaseIndex: 0,
+        sequence: layout.collapseSequence,
+        warningBiome: null,
+        warningSecondsRemaining: 0,
+        collapsedBiomes: [],
+        nextEventInSeconds: gameConfig.match.collapseIntervalSeconds,
+      },
+      helicopter: {
+        phase: 'idle',
+        activatedBy: null,
+        arrivalSecondsRemaining: 0,
+        departureSecondsRemaining: 0,
+        seatsOccupiedBy: [],
+        x: gameConfig.world.helipadPos.x,
+        y: 26,
+        z: gameConfig.world.helipadPos.z,
+      },
+      herald: null,
+      results: null,
+      firstBloodTriggered: false,
+      lastTickMs: Date.now(),
+      tickCounter: 0,
+      endedAtMs: null,
+    };
+
+    this.rooms.set(code, room);
+    this.socketToPlayer.set(ws, { roomCode: code, playerId });
+
+    this.send(ws, {
+      type: 'room_joined',
+      payload: {
+        roomCode: code,
+        playerId,
+        reconnectToken,
+        snapshot: this.buildSnapshot(room),
+      },
+    });
+    this.beginCountdown(room);
   }
 
   private joinRoom(
@@ -500,7 +652,9 @@ export class AshenCrownGameServer {
   }
 
   private migrateHost(room: RoomInstance) {
-    const next = Array.from(room.players.values()).find((p) => p.connected) || Array.from(room.players.values())[0];
+    const next =
+      Array.from(room.players.values()).find((p) => !p.isDummy && p.connected) ||
+      Array.from(room.players.values()).find((p) => !p.isDummy);
     if (next) {
       room.hostId = next.id;
     }
@@ -525,6 +679,10 @@ export class AshenCrownGameServer {
         }
         if (msg.type === 'create_room') {
           this.createRoom(ws, (msg.payload as Record<string, unknown>) || {});
+          return;
+        }
+        if (msg.type === 'start_dummy_match') {
+          this.createDummyMatch(ws, (msg.payload as Record<string, unknown>) || {});
           return;
         }
         if (msg.type === 'join_room') {
@@ -710,7 +868,7 @@ export class AshenCrownGameServer {
 
   private beginCountdown(room: RoomInstance) {
     room.phase = 'countdown';
-    room.countdownSecondsRemaining = gameConfig.server.countdownSeconds;
+    room.countdownSecondsRemaining = room.isDummyMatch ? 3 : gameConfig.server.countdownSeconds;
     room.matchElapsedSeconds = 0;
     room.firstBloodTriggered = false;
     room.results = null;
@@ -739,7 +897,7 @@ export class AshenCrownGameServer {
     let idx = 0;
     for (const player of room.players.values()) {
       const spawn = room.layout.spawnPoints[idx % room.layout.spawnPoints.length];
-      player.ceremonyDaggerDrawn = false;
+      player.ceremonyDaggerDrawn = Boolean(player.isDummy);
       player.world = this.createDefaultWorldPlayer(
         player.id,
         player.name,
@@ -749,13 +907,16 @@ export class AshenCrownGameServer {
         room.seed,
         room.settings.startingRations
       );
+      if (player.isDummy) player.world.isDummy = true;
       idx++;
     }
 
     this.issueHerald(
       room,
-      'THE CEREMONY BEGINS',
-      'Stand around the Ash Pedestal. Draw your dagger before the fifteen-second bell tolls.',
+      room.isDummyMatch ? 'DUMMY MATCH CEREMONY' : 'THE CEREMONY BEGINS',
+      room.isDummyMatch
+        ? 'Entering solo practice arena with Ash Dummy in 3 seconds.'
+        : 'Stand around the Ash Pedestal. Draw your dagger before the fifteen-second bell tolls.',
       'ceremony'
     );
     this.broadcastRoomState(room);
@@ -1205,24 +1366,26 @@ export class AshenCrownGameServer {
       rankings,
     };
 
-    // Persist stats
-    for (const r of rankings) {
-      const prev = this.statsMap.get(r.name) || {
-        name: r.name,
-        hearthId: r.hearthId,
-        appearance: DEFAULT_APPEARANCE,
-        matchesPlayed: 0,
-        wins: 0,
-        escapes: 0,
-        eliminations: 0,
-      };
-      prev.matchesPlayed += 1;
-      if (r.placement === 1) prev.wins += 1;
-      if (r.escaped) prev.escapes += 1;
-      prev.eliminations += r.eliminations;
-      this.statsMap.set(r.name, prev);
+    // Persist stats for real multiplayer matches only
+    if (!room.isDummyMatch) {
+      for (const r of rankings) {
+        const prev = this.statsMap.get(r.name) || {
+          name: r.name,
+          hearthId: r.hearthId,
+          appearance: DEFAULT_APPEARANCE,
+          matchesPlayed: 0,
+          wins: 0,
+          escapes: 0,
+          eliminations: 0,
+        };
+        prev.matchesPlayed += 1;
+        if (r.placement === 1) prev.wins += 1;
+        if (r.escaped) prev.escapes += 1;
+        prev.eliminations += r.eliminations;
+        this.statsMap.set(r.name, prev);
+      }
+      this.saveStats();
     }
-    this.saveStats();
 
     this.issueHerald(
       room,
@@ -1248,9 +1411,10 @@ export class AshenCrownGameServer {
   private tickRoom(room: RoomInstance, dt: number, now: number) {
     // Reconnect expiration cleanup (90 seconds)
     for (const [pid, player] of room.players.entries()) {
+      if (player.isDummy) continue;
       if (!player.connected && player.disconnectedAt) {
         if (now - player.disconnectedAt > gameConfig.server.reconnectGraceSeconds * 1000) {
-          if (room.phase === 'lobby') {
+          if (room.phase === 'lobby' || room.isDummyMatch) {
             room.players.delete(pid);
           } else if (room.phase === 'playing' && player.world.alive) {
             this.handleElimination(room, player);
@@ -1259,7 +1423,8 @@ export class AshenCrownGameServer {
       }
     }
 
-    if (room.players.size === 0) {
+    const humanPlayers = Array.from(room.players.values()).filter((p) => !p.isDummy);
+    if (room.players.size === 0 || (room.isDummyMatch && humanPlayers.length === 0)) {
       this.rooms.delete(room.code);
       return;
     }
@@ -1290,6 +1455,9 @@ export class AshenCrownGameServer {
 
     // 3. Update Player Movement, Physics, Survival
     for (const player of room.players.values()) {
+      if (player.isDummy) {
+        this.tickDummyPlayer(room, player);
+      }
       this.tickPlayerMovement(room, player, dt);
       const biome = getBiomeAt(player.world.x, player.world.z);
       const isCollapsed = room.collapse.collapsedBiomes.includes(biome);
@@ -1400,6 +1568,29 @@ export class AshenCrownGameServer {
     }
   }
 
+  private tickDummyPlayer(room: RoomInstance, dummy: ServerPlayer) {
+    if (!dummy.world.alive || dummy.world.escaped) return;
+    // Gentle orbit around Base Camp perimeter so the player can find, spar, or test mechanics against Ash Dummy
+    const t = room.matchElapsedSeconds;
+    const targetX = Math.cos(t * 0.28) * 14;
+    const targetZ = Math.sin(t * 0.28) * 14;
+    const dx = targetX - dummy.world.x;
+    const dz = targetZ - dummy.world.z;
+    const dist = Math.hypot(dx, dz);
+
+    const periodicBlock = Math.floor(t) % 9 >= 6;
+    dummy.input = {
+      moveX: dist > 1.2 ? (dx / dist) * 0.65 : 0,
+      moveZ: dist > 1.2 ? (dz / dist) * 0.65 : 0,
+      yaw: Math.atan2(dx, dz),
+      pitch: 0,
+      sprint: false,
+      crouch: false,
+      jump: false,
+      blocking: periodicBlock,
+    };
+  }
+
   private tickPlayerMovement(room: RoomInstance, player: ServerPlayer, dt: number) {
     const w = player.world;
     if (!w.alive || w.escaped) return;
@@ -1505,10 +1696,12 @@ export class AshenCrownGameServer {
       isHost: p.id === room.hostId,
       connected: p.connected,
       ceremonyDaggerDrawn: p.ceremonyDaggerDrawn,
+      isDummy: Boolean(p.isDummy),
     }));
 
     return {
       roomCode: room.code,
+      isDummyMatch: room.isDummyMatch,
       phase: room.phase,
       seed: room.seed,
       hostId: room.hostId,

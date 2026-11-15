@@ -222,6 +222,13 @@ export default function App() {
       switch (msg.type) {
         case 'welcome': {
           const params = new URLSearchParams(window.location.search);
+          if (params.get('dummy') === '1') {
+            wsClient.send({
+              type: 'start_dummy_match',
+              payload: { name: playerName, hearthId, appearance },
+            });
+            break;
+          }
           const urlRoom = params.get('room');
           if (urlRoom && /^[A-Z0-9]{6}$/i.test(urlRoom)) {
             wsClient.send({
@@ -373,6 +380,10 @@ export default function App() {
             setHubIntent('join');
             setUiScreen('hub');
           }}
+          onStartDummyMatch={() => {
+            soundEngine.unlock();
+            wsClient.send({ type: 'start_dummy_match', payload: { name: playerName, hearthId, appearance } });
+          }}
           onOpenSettings={() => setSettingsModal({ open: true, tab: 'settings' })}
           onOpenAbout={() => setSettingsModal({ open: true, tab: 'about' })}
           muted={muted}
@@ -380,7 +391,7 @@ export default function App() {
         />
       )}
 
-      {/* Lobby / Room / 15-Second Ceremonial Pedestal Countdown */}
+      {/* Lobby / Room / Ceremonial Pedestal Countdown */}
       {(uiScreen === 'hub' || uiScreen === 'room' || uiScreen === 'countdown') && (
         <LobbyScreen
           mode={uiScreen === 'hub' ? 'hub' : uiScreen === 'countdown' ? 'countdown' : 'room'}
@@ -399,6 +410,10 @@ export default function App() {
           onCreateRoom={() => {
             soundEngine.unlock();
             wsClient.send({ type: 'create_room', payload: { name: playerName, hearthId, appearance } });
+          }}
+          onStartDummyMatch={() => {
+            soundEngine.unlock();
+            wsClient.send({ type: 'start_dummy_match', payload: { name: playerName, hearthId, appearance } });
           }}
           onJoinRoom={(code) => {
             soundEngine.unlock();
