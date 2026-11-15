@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+:root {
+  --bg-charcoal: #141311;
+  --surface-ash: #1e1c18;
+  --surface-elevated: #28241e;
+  --border-ember: rgba(212, 168, 83, 0.22);
+  --text-parchment: #f2ede4;
+  --text-muted: #a39a8b;
+  --accent-gold: #d4a853;
+  --accent-ember: #d96b38;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--bg-charcoal);
+  color: var(--text-parchment);
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.font-display {
+  font-family: 'Cinzel', Georgia, serif;
+}
+
+.font-mono-tabular {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom slim scrollbar for lobby/inventory drawers */
+.ashen-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.ashen-scroll::-webkit-scrollbar-track {
+  background: rgba(20, 19, 17, 0.6);
+}
+.ashen-scroll::-webkit-scrollbar-thumb {
+  background: rgba(212, 168, 83, 0.35);
+  border-radius: 3px;
+}

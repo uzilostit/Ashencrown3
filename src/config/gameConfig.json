@@ -1,0 +1,53 @@
+{
+  "server": {
+    "tickRateHz": 20,
+    "countdownSeconds": 15,
+    "minPlayersToStart": 2,
+    "maxPlayersPerRoom": 15,
+    "reconnectGraceSeconds": 90,
+    "rateLimitMaxPerSecond": 45
+  },
+  "world": {
+    "arenaRadius": 115,
+    "baseCampRadius": 24,
+    "helipadPos": { "x": 0, "z": -13 },
+    "pedestalPos": { "x": 0, "z": 0 }
+  },
+  "survival": {
+    "maxHealth": 100,
+    "maxHunger": 100,
+    "maxStamina": 100,
+    "baseTemperature": 22,
+    "hungerDrainPerSecond": 0.28,
+    "staminaDrainSprintPerSecond": 14,
+    "staminaDrainJump": 8,
+    "staminaRegenPerSecond": 16,
+    "healthRegenPerSecond": 0.4,
+    "starvationDamagePerSecond": 1.8,
+    "bleedDamagePerSecond": 2.2,
+    "collapseBaseDamagePerSecond": 4.5,
+    "collapseDamageEscalationPerPhase": 2.5
+  },
+  "match": {
+    "collapseWarningSeconds": 60,
+    "collapseIntervalSeconds": 55,
+    "totalCollapses": 5,
+    "flareArrivalSeconds": 60,
+    "helicopterStaySeconds": 30,
+    "helicopterSeats": 2
+  },
+  "movement": {
+    "walkSpeed": 5.2,
+    "sprintSpeed": 8.4,
+    "crouchSpeed": 3.0,
+    "jumpVelocity": 7.8,
+    "gravity": 20.0,
+    "playerRadius": 0.55
+  },
+  "camera": {
+    "minZoom": 3.2,
+    "maxZoom": 12.5,
+    "defaultZoom": 6.8,
+    "defaultSensitivity": 1.0
+  }
+}

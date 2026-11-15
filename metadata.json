@@ -1,0 +1,6 @@
+{
+  "name": "ASHEN CROWN",
+  "description": "A handcrafted 3D papercraft multiplayer survival game set in a collapsing hexagonal arena across six distinct biomes and Base Camp.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
